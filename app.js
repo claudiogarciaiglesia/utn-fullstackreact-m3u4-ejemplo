@@ -43,9 +43,7 @@ const qy = util.promisify(conexion.query).bind(conexion); // permite uso de asyn
 app.get('/categoria', async (req, res) => {
     try {
         const query = 'SELECT * FROM categoria';
-        // conexion.query(query, (queryRes) => {
-        //     console.log(queryRes);
-        // });
+
 
         const queryRes = await qy(query);
 
@@ -60,12 +58,9 @@ app.get('/categoria', async (req, res) => {
 
 app.get('/categoria/:id', async (req, res) => {
     try {
-        const query = `SELECT * FROM categoria WHERE id = ${req.params.id}`;
-        // conexion.query(query, (queryRes) => {
-        //     console.log(queryRes);
-        // });
+        const query = 'SELECT * FROM categoria WHERE id = ?';
 
-        const queryRes = await qy(query);
+        const queryRes = await qy(query, [req.params.id]);
 
         res.send({ "respuesta": queryRes });
 
@@ -84,15 +79,15 @@ app.post('/categoria', async (req, res) => {
         }
 
         // Verifico que no exista esa categoria
-        let query = `SELECT id FROM categoria WHERE nombre = "${req.body.nombre.toUpperCase()}"`;
+        let query = 'SELECT id FROM categoria WHERE nombre = ?';
 
-        let queryRes = await qy(query);
+        let queryRes = await qy(query, [req.body.nombre.toUpperCase()]);
         if (queryRes.length > 0) {
             throw new Error('La categoria ya existe');
         }
         //Guardo la nueva acategoria
-        query = `INSERT INTO categoria (nombre) VALUE ("${req.body.nombre.toUpperCase()}")`;
-        queryRes = await qy(query);
+        query = 'INSERT INTO categoria (nombre) VALUE (?)';
+        queryRes = await qy(query, [req.body.nombre.toUpperCase()]);
 
         res.send({ 'respuesta': queryRes.insertId });
 
@@ -107,15 +102,15 @@ app.put('/categoria/:id', async (req, res) => {
         if (!req.body.nombre) {
             throw new Error('No se envio el nombre');
         }
-        let query = `SELECT * FROM categoria WHERE nombre = "${req.body.nombre}" and id <> "${req.params.id}"`;
-        queryRes = await qy(query);
+        let query = 'SELECT * FROM categoria WHERE nombre = ? and id <> ?';
+        queryRes = await qy(query, [req.body.nombre, req.params.id]);
 
         if (queryRes.length > 0) {
             throw new Error(`La categoria ${req.body.nombre} ya existe`);
         }
 
-        query = `UPDATE categoria SET nombre = "${req.body.nombre}" WHERE id = "${req.params.id}"`;
-        queryRes = await qy(query);
+        query = 'UPDATE categoria SET nombre = ? WHERE id = ?';
+        queryRes = await qy(query, [req.body.nombre, req.params.id]);
 
         res.send({ 'respuesta': queryRes.changedRows });
         console.log(queryRes);
@@ -128,17 +123,6 @@ app.put('/categoria/:id', async (req, res) => {
 
 app.delete('/categoria/:id', async (req, res) => {
     try {
-
-        let query = `SELECT * FROM producto WHERE categoria_id = "${req.params.id}"`;
-        queryRes = await qy(query);
-
-        console.log(queryRes);
-        if (queryRes.length > 0) {
-            throw new Error(`No es posible borrar la categoria, existen uno o mas productos relacionados`);
-        }
-
-        query = `DELETE FROM categoria WHERE id = "${req.params.id}"`;
-        queryRes = await qy(query);
 
         res.send({ 'respuesta': queryRes });
 
@@ -161,25 +145,28 @@ app.post('/producto', async (req, res) => {
             throw new Error('No se enviaron los datos necesarios');
         }
 
-        let query = `SELECT * FROM categoria WHERE id = "${req.body.categoria_id}"`;
-        let queryRes = await qy(query);
+        let query = 'SELECT * FROM categoria WHERE id = ?';
+        let queryRes = await qy(query, [req.body.categoria_id]);
 
         if (queryRes.length == 0) {
             throw new Error("No existe la categoria");
         }
 
-        query = `SELECT * FROM producto WHERE nombre = "${req.body.nombre}"`;
-        queryRes = await qy(query);
+        query = 'SELECT * FROM producto WHERE nombre = ?';
+        queryRes = await qy(query, [req.body.nombre]);
 
         if (queryRes.length > 0) {
             throw new Error("El nombre  de producto ya existe");
         }
 
-        query = `INSERT INTO producto (nombre, descripcion, categoria_id) VALUES ("${req.body.nombre}", ${req.body.descripcion ? '"' + req.body.descripcion + '"' : null}, ${req.body.categoria_id})`;
-        queryRes = await qy(query);
+        if (!req.body.descripcion) { req.body.descripcion = null };
+
+        query = 'INSERT INTO producto (nombre, descripcion, categoria_id) VALUES (?, ?, ?)';
+        queryRes = await qy(query, [req.body.nombre, req.body.descripcion, req.body.categoria_id]);
 
 
         res.send({ 'respuesta': queryRes.insertId });
+
 
 
     } catch (e) {
